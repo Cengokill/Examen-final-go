@@ -17,8 +17,28 @@ URLWatch recoit un lot d'URLs, les verifie en parallele (avec limite de concurre
 | `internal/store` | Persistance en memoire (SQLite en bonus) |
 | `internal/api` | Handlers HTTP, DTO JSON, middleware |
 
+L'entièreté de ce fichier markdown a été reformulée et indentée correctement par l'IA.
+
 ## Decisions (partie 0)
 
 - Module Go : `github.com/Cengokill/Examen-final-go`
-- Inversion de dependance : les packages techniques dependront de `domain`, pas l'inverse
 - `main.go` reste mince : uniquement le cablage
+
+## Decisions (partie 1 domaine)
+
+### Types
+
+- `CheckResult` : une URL, son code HTTP, un bool `Available`, la latence en ms et un message d'erreur optionnel (`omitempty` en JSON)
+- `BatchSummary` : type separe pour le résumé (total, disponibles, echecs, duree totale en ms)
+- `Batch` : id, `CreatedAt` en UTC, slice de resultats + resume pre-calcule
+
+### Agrégation
+
+- `ComputeSummary` parcourt la slice et utilise une map pour compter disponibles / echecs (vu en TP)
+- `TotalDurationMs` = somme des `LatencyMs` de chaque URL (duree cumulee des requetes)
+- `NewBatch` copie la slice des resultats avant de calculer le resume (evite les mutations externes)
+
+### Interfaces
+
+- `Checker.Check(ctx, url)` : le `context` permettra timeout et annulation (partie pool/checker)
+- `Store.Save` / `Store.Get` : contrat minimal ; `Get` renverra `ErrBatchNotFound` si l'id n'existe pas
