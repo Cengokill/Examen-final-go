@@ -46,3 +46,22 @@ La partie 0 ne demande que l'init du module et du depot Git.
 ### Pourquoi
 
 Le domaine doit rester indépendant de HTTP et du stockage. Les interfaces permettront de mocker le checker dans les tests.
+
+## Partie 5.3 — Gestion des erreurs
+
+### Ce que j'ai demandé à l'IA
+
+- Erreur sentinelle `ErrBatchNotFound` pour `Store.Get`
+- Exemples de wrapping et usage `errors.Is` / `errors.As`
+
+### Accepté
+
+- `api.StatusFromError` pour mapper 404/400/500
+
+### Modifié / rejeté
+
+- Une seule erreur personnalisée comme demandé dans le sujet
+
+### Pourquoi
+
+`errors.As` sur une erreur wrappée avec `%w` permet à la couche API de renvoyer le bon code HTTP sans connaître tous les messages d'erreur.
