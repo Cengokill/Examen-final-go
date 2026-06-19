@@ -65,3 +65,24 @@ Le domaine doit rester indépendant de HTTP et du stockage. Les interfaces perme
 ### Pourquoi
 
 `errors.As` sur une erreur wrappée avec `%w` permet à la couche API de renvoyer le bon code HTTP sans connaître tous les messages d'erreur.
+
+## Partie 2 — Pool concurrent
+
+### Ce que j'ai demandé à l'IA
+
+- Pourquoi mon `range results` bloquait avec un canal non bufferisé
+- Comment tester que la concurrence ne dépasse pas N sans appeler de vraies URLs
+
+### Accepté
+
+- L'idée du `MockChecker` avec un compteur `maxActifs` protégé par mutex
+- Le pattern `go func() { wg.Wait(); close(results) }()` du TP 4c
+
+### Modifié / rejeté
+
+- J'ai gardé ma structure `distribuerURLs` / `worker` mais bufferisé `jobs` et `results` à `len(urls)`
+- J'ai mis les deux timeouts (`BatchTimeout` + `URLTimeout`) dans le worker
+
+### Pourquoi
+
+Le pool je l'ai calqué sur exercice-4c. L'IA m'a surtout débloqué sur le deadlock et le test de concurrence.

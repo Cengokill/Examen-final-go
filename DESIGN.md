@@ -1,12 +1,13 @@
 # Design URLWatch
 
-Document d'architecture du projet. Sera complete au fur et a mesure de l'implementation.
+Document d'architecture du projet.
+L'entièreté de ce document a été formaté et reformulé pour qu'il soit bien écrit, par l'IA.
 
 ## Vue d'ensemble
 
 URLWatch recoit un lot d'URLs, les verifie en parallele (avec limite de concurrence et timeout via `context`), puis stocke et expose les resultats via une API REST.
 
-## Packages prevus
+## Packages prévus
 
 | Package | Role |
 |---------|------|
@@ -24,7 +25,7 @@ L'entièreté de ce fichier markdown a été reformulée et indentée correcteme
 - Module Go : `github.com/Cengokill/Examen-final-go`
 - `main.go` reste mince : uniquement le cablage
 
-## Decisions (partie 1 domaine)
+## Décisions (partie 1 domaine)
 
 ### Types
 
@@ -42,3 +43,46 @@ L'entièreté de ce fichier markdown a été reformulée et indentée correcteme
 
 - `Checker.Check(ctx, url)` : le `context` permettra timeout et annulation (partie pool/checker)
 - `Store.Save` / `Store.Get` : contrat minimal ; `Get` renverra `ErrBatchNotFound` si l'id n'existe pas
+
+### Erreurs (partie 5.3)
+
+- **Sentinelle** : `ErrBatchNotFound` pour un id inconnu dans `Store.Get`
+- **Erreur personnalisee** : `ValidationError` avec le champ fautif (`Field`) et un message
+- **Wrapping** : `ValidateBatchInput` utilise `fmt.Errorf("...: %w", err)` pour enrichir le contexte
+- **Detection** : `errors.Is` pour la sentinelle, `errors.As` pour extraire `*ValidationError` meme wrappée
+- **API** : `api.StatusFromError` traduit en 404 / 400 / 500 selon le type d'erreur
+
+## Decisions (partie 2 — pool concurrent)
+
+### Architecture
+
+- `pool.Runner` prend un `domain.Checker` en dependance (injection, testable)
+- `pool.Options` : `Concurrency`, `BatchTimeout`, `URLTimeout`
+
+### Fan-out / fan-in (channels)
+
+| Canal | Direction | Buffer | Justification |
+|-------|-----------|--------|---------------|
+| `jobs` | `chan string` | `len(urls)` | Le fan-out envoie toutes les URLs sans bloquer en attendant un worker |
+| `results` | `chan CheckResult` | `len(urls)` | Evite le deadlock quand plusieurs workers terminent en meme temps (TP 4a) |
+
+- **Fan-out** : goroutine `distribuerURLs` envoie les URLs sur `jobs`, puis `close(jobs)`
+- **Workers** : nombre fixe = `Concurrency` (jamais une goroutine par URL)
+- **Fan-in** : goroutine qui `wg.Wait()` puis `close(results)` ; le caller fait `range results`
+
+### Context
+
+- `context.WithTimeout(parent, BatchTimeout)` pour le lot entier
+- `context.WithTimeout(batchCtx, URLTimeout)` par URL dans chaque worker
+- `select` sur `ctx.Done()` dans le fan-out, les workers et l'envoi des resultats
+
+### Synchronisation
+
+- `sync.WaitGroup` : attendre la fin des N workers avant de fermer `results`
+- `sync.Mutex` dans `MockChecker` uniquement (compteur de goroutines actives pour les tests)
+- Pas de `sync.Once` : une seule goroutine ferme `results` apres `wg.Wait()`
+
+### Checker
+
+- `checker.HTTPChecker` : vrai GET avec `http.NewRequestWithContext`
+- `checker.MockChecker` : delai simule + suivi du pic de concurrence pour les tests
