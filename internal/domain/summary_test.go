@@ -2,35 +2,64 @@ package domain
 
 import "testing"
 
-func TestComputeSummary(t *testing.T) {
-	results := []CheckResult{
-		{URL: "https://ok.test", StatusCode: 200, Available: true, LatencyMs: 100},
-		{URL: "https://ok2.test", StatusCode: 201, Available: true, LatencyMs: 50},
-		{URL: "https://ko.test", StatusCode: 0, Available: false, LatencyMs: 200, Error: "timeout"},
+func TestComputeSummaryTable(t *testing.T) {
+	cas := []struct {
+		name     string
+		results  []CheckResult
+		wantTotal int
+		wantUp   int
+		wantDown int
+		wantMs   int64
+	}{
+		{
+			name: "mixte up/down",
+			results: []CheckResult{
+				{Available: true, LatencyMs: 100},
+				{Available: true, LatencyMs: 50},
+				{Available: false, LatencyMs: 200},
+			},
+			wantTotal: 3,
+			wantUp:    2,
+			wantDown:  1,
+			wantMs:    350,
+		},
+		{
+			name:      "slice vide",
+			results:   nil,
+			wantTotal: 0,
+			wantUp:    0,
+			wantDown:  0,
+			wantMs:    0,
+		},
+		{
+			name: "tout en échec",
+			results: []CheckResult{
+				{Available: false, LatencyMs: 10},
+				{Available: false, LatencyMs: 20},
+			},
+			wantTotal: 2,
+			wantUp:    0,
+			wantDown:  2,
+			wantMs:    30,
+		},
 	}
 
-	summary := ComputeSummary(results)
-
-	// fmt.Println("summary test : ", summary.Total, summary.Available, summary.Failed)
-	if summary.Total != 3 {
-		t.Fatalf("Total attendu 3, obtenu %d", summary.Total)
-	}
-	if summary.Available != 2 {
-		t.Fatalf("Available attendu 2, obtenu %d", summary.Available)
-	}
-	if summary.Failed != 1 {
-		t.Fatalf("Failed attendu 1, obtenu %d", summary.Failed)
-	}
-	if summary.TotalDurationMs != 350 {
-		t.Fatalf("TotalDurationMs attendu 350, obtenu %d", summary.TotalDurationMs)
-	}
-}
-
-func TestComputeSummaryVide(t *testing.T) {
-	summary := ComputeSummary(nil)
-
-	if summary.Total != 0 || summary.Available != 0 || summary.Failed != 0 {
-		t.Fatalf("résumé vide attendu, obtenu : %+v", summary)
+	for _, tc := range cas {
+		t.Run(tc.name, func(t *testing.T) {
+			summary := ComputeSummary(tc.results)
+			if summary.Total != tc.wantTotal {
+				t.Fatalf("Total attendu %d, obtenu %d", tc.wantTotal, summary.Total)
+			}
+			if summary.Available != tc.wantUp {
+				t.Fatalf("Available attendu %d, obtenu %d", tc.wantUp, summary.Available)
+			}
+			if summary.Failed != tc.wantDown {
+				t.Fatalf("Failed attendu %d, obtenu %d", tc.wantDown, summary.Failed)
+			}
+			if summary.TotalDurationMs != tc.wantMs {
+				t.Fatalf("TotalDurationMs attendu %d, obtenu %d", tc.wantMs, summary.TotalDurationMs)
+			}
+		})
 	}
 }
 
@@ -41,7 +70,6 @@ func TestNewBatch(t *testing.T) {
 
 	batch := NewBatch("batch-1", results)
 
-	// fmt.Println("NewBatch test : ", batch.ID, batch.Summary.Total)
 	if batch.ID != "batch-1" {
 		t.Fatalf("ID attendu batch-1, obtenu : %s", batch.ID)
 	}
@@ -55,7 +83,6 @@ func TestNewBatch(t *testing.T) {
 		t.Fatalf("Summary.Total attendu 1, obtenu %d", batch.Summary.Total)
 	}
 
-	// la slice d'origine ne doit pas impacter le batch
 	results[0].URL = "modifié"
 	if batch.Results[0].URL != "https://exemple.fr" {
 		t.Fatal("le batch doit avoir sa propre copie des résultats")

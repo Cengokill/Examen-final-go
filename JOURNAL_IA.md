@@ -107,3 +107,24 @@ Le pool je l'ai calqué sur exercice-4c. L'IA m'a surtout débloqué sur le dead
 ### Pourquoi
 
 Gin c'était bien pour le TP mais ici je voulais rester en stdlib.
+
+## Partie 4 — Tests
+
+### Ce que j'ai demandé à l'IA
+
+- Exemple de tests table-driven pour validateCreateRequest
+- Comment mocker Store + Checker dans httptest sans réseau
+
+### Accepté
+
+- Pattern `for _, tc := range cas { t.Run(tc.name, ...) }` du cours
+- mockStore local dans handler_test.go
+
+### Modifié / rejeté
+
+- J'ai regroupé POST/GET/404 dans une seule table httptest
+- Tests pool avec mock déterministe (URL contient "fail" → ko)
+
+### Pourquoi
+
+Le sujet exige table-driven + interfaces mockées. Pas besoin de vraies URLs en CI.

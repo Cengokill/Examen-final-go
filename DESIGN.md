@@ -115,3 +115,11 @@ L'entièreté de ce fichier markdown a été reformulée et indentée correcteme
 ### Bonus recovery
 
 - `recoveryMiddleware` : panic -> log + `500 internal`
+
+## Decisions (partie 4 les tests)
+
+- Tests table-driven : validation de l'API, validation du domaine, ComputeSummary, pool, store, handlers httptest
+- Mocking : `checker.MockChecker` (Checker), `mockStore` + `MemoryStore` (Store)
+- httptest : POST 201, GET 200, GET 404, POST 400
+- Context : annulation manuelle + timeout global lot (`TestRunContextAnnulationOuTimeout`)
+- Suite propre sous `go test -race ./...`

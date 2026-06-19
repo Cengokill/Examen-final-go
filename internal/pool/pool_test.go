@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,27 +11,84 @@ import (
 	"github.com/Cengokill/Examen-final-go/internal/domain"
 )
 
-func TestRunCollecteTousLesResultats(t *testing.T) {
-	mock := &checker.MockChecker{Delay: 5 * time.Millisecond}
-	runner := NewRunner(mock)
+// deterministicMock renvoie ok/ko selon l'URL (sans réseau).
+func deterministicMock() *checker.MockChecker {
+	return &checker.MockChecker{
+		Delay: 5 * time.Millisecond,
+		Response: func(url string) domain.CheckResult {
+			if strings.Contains(url, "fail") {
+				return domain.CheckResult{
+					URL:       url,
+					Available: false,
+					Error:     "mock: host down",
+					LatencyMs: 5,
+				}
+			}
+			return domain.CheckResult{
+				URL:        url,
+				StatusCode: 200,
+				Available:  true,
+				LatencyMs:  5,
+			}
+		},
+	}
+}
 
-	urls := []string{
-		"https://a.test",
-		"https://b.test",
-		"https://c.test",
+func TestRunTable(t *testing.T) {
+	cas := []struct {
+		name         string
+		urls         []string
+		concurrency  int
+		batchTimeout time.Duration
+		urlTimeout   time.Duration
+		wantCount    int
+		wantUp       int
+		wantDown     int
+	}{
+		{
+			name:         "collecte complète",
+			urls:         []string{"https://a.test", "https://b.test", "https://c.test"},
+			concurrency:  2,
+			batchTimeout: 2 * time.Second,
+			urlTimeout:   time.Second,
+			wantCount:    3,
+			wantUp:       3,
+		},
+		{
+			name:         "mock déterministe ok/ko",
+			urls:         []string{"https://ok.test", "https://fail.test"},
+			concurrency:  1,
+			batchTimeout: 2 * time.Second,
+			urlTimeout:   time.Second,
+			wantCount:    2,
+			wantUp:       1,
+			wantDown:     1,
+		},
 	}
 
-	results := runner.Run(context.Background(), urls, Options{
-		Concurrency:  2,
-		BatchTimeout: 2 * time.Second,
-		URLTimeout:   time.Second,
-	})
+	for _, tc := range cas {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := NewRunner(deterministicMock())
+			results := runner.Run(context.Background(), tc.urls, Options{
+				Concurrency:  tc.concurrency,
+				BatchTimeout: tc.batchTimeout,
+				URLTimeout:   tc.urlTimeout,
+			})
 
-	if len(results) != len(urls) {
-		t.Fatalf("%d résultats attendus, obtenu %d", len(urls), len(results))
+			if len(results) != tc.wantCount {
+				t.Fatalf("%d résultats attendus, obtenu %d", tc.wantCount, len(results))
+			}
+
+			summary := domain.ComputeSummary(results)
+			if summary.Available != tc.wantUp {
+				t.Fatalf("up attendu %d, obtenu %d", tc.wantUp, summary.Available)
+			}
+			if summary.Failed != tc.wantDown {
+				t.Fatalf("down attendu %d, obtenu %d", tc.wantDown, summary.Failed)
+			}
+		})
 	}
-	// 3 attendus
-	// fmt.Println("TestRunCollecte : ", len(results), "résultats")
+	// fmt.Println("pool table : mock déterministe sans réseau") // fan-out/fan-in
 }
 
 func TestRunConcurrencyBornee(t *testing.T) {
@@ -49,35 +107,63 @@ func TestRunConcurrencyBornee(t *testing.T) {
 		URLTimeout:   time.Second,
 	})
 
-	// doit rester <= 2
-	// fmt.Println("max goroutines actives :", mock.MaxActifs())
 	if mock.MaxActifs() > concurrency {
 		t.Fatalf("concurrence dépassée : max %d, limite %d", mock.MaxActifs(), concurrency)
 	}
 }
 
-func TestRunBatchTimeout(t *testing.T) {
-	mock := &checker.MockChecker{Delay: 200 * time.Millisecond}
-	runner := NewRunner(mock)
-
-	urls := []string{
-		"https://lent-1.test",
-		"https://lent-2.test",
-		"https://lent-3.test",
-		"https://lent-4.test",
+func TestRunContextAnnulationOuTimeout(t *testing.T) {
+	cas := []struct {
+		name       string
+		cancel     bool
+		batchTO    time.Duration
+		wantPartiel bool
+	}{
+		{
+			name:        "annulation manuelle",
+			cancel:      true,
+			batchTO:     10 * time.Second,
+			wantPartiel: true,
+		},
+		{
+			name:        "timeout global lot",
+			cancel:      false,
+			batchTO:     50 * time.Millisecond,
+			wantPartiel: true,
+		},
 	}
 
-	results := runner.Run(context.Background(), urls, Options{
-		Concurrency:  2,
-		BatchTimeout: 50 * time.Millisecond,
-		URLTimeout:   time.Second,
-	})
+	for _, tc := range cas {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &checker.MockChecker{Delay: 100 * time.Millisecond}
+			runner := NewRunner(mock)
 
-	// toutes les URLs ne seront pas forcément traitées avant le timeout global
-	if len(results) >= len(urls) {
-		t.Fatalf("timeout global attendu, tous les résultats collectés (%d)", len(results))
+			ctx, cancel := context.WithCancel(context.Background())
+			urls := make([]string, 10)
+			for i := range urls {
+				urls[i] = fmt.Sprintf("https://lent-%d.test", i)
+			}
+
+			done := make(chan []domain.CheckResult)
+			go func() {
+				done <- runner.Run(ctx, urls, Options{
+					Concurrency:  2,
+					BatchTimeout: tc.batchTO,
+					URLTimeout:   time.Second,
+				})
+			}()
+
+			if tc.cancel {
+				time.Sleep(30 * time.Millisecond)
+				cancel()
+			}
+
+			results := <-done
+			if tc.wantPartiel && len(results) >= len(urls) {
+				t.Fatalf("résultats partiels attendus, obtenu %d/%d", len(results), len(urls))
+			}
+		})
 	}
-	// fmt.Println("batch timeout : ", len(results), "résultats partiels")
 }
 
 func TestRunURLTimeout(t *testing.T) {
@@ -95,41 +181,7 @@ func TestRunURLTimeout(t *testing.T) {
 		URLTimeout:   20 * time.Millisecond,
 	})
 
-	if len(results) != 1 {
-		t.Fatalf("1 résultat attendu, obtenu %d", len(results))
-	}
-	if results[0].Error == "" {
+	if len(results) != 1 || results[0].Error == "" {
 		t.Fatal("erreur de timeout par URL attendue")
 	}
-}
-
-func TestRunAnnulationContexte(t *testing.T) {
-	mock := &checker.MockChecker{Delay: 100 * time.Millisecond}
-	runner := NewRunner(mock)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	urls := make([]string, 10)
-	for i := range urls {
-		urls[i] = fmt.Sprintf("https://cancel-%d.test", i)
-	}
-
-	done := make(chan []domain.CheckResult)
-	go func() {
-		done <- runner.Run(ctx, urls, Options{
-			Concurrency:  2,
-			BatchTimeout: 10 * time.Second,
-			URLTimeout:   time.Second,
-		})
-	}()
-
-	tempsDormir := 30 * time.Millisecond
-	time.Sleep(tempsDormir)
-	cancel()
-
-	results := <-done
-	if len(results) >= len(urls) {
-		t.Fatalf("annulation attendue, %d/%d résultats", len(results), len(urls))
-	}
-	// fmt.Println("annulation ctx : ", len(results), "résultats partiels sur", len(urls))
 }
