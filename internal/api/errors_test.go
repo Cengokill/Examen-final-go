@@ -39,9 +39,11 @@ func TestStatusFromError(t *testing.T) {
 	for _, tc := range casDerreur {
 		t.Run(tc.name, func(t *testing.T) {
 			got := StatusFromError(tc.err)
+			// fmt.Println(tc.name, ": status", got, "code", ErrorCode(tc.err)) // debug mapping
 			if got != tc.status {
 				t.Fatalf("statut attendu : %d, Mais obtenu : %d", tc.status, got)
 			}
+			// fmt.Println("ErrorCode :", ErrorCode(tc.err))
 		})
 	}
 }

@@ -27,6 +27,7 @@ func (h *HTTPChecker) Check(ctx context.Context, url string) domain.CheckResult 
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		// fmt.Println("NewRequestWithContext échoué : ", url, err)
 		return domain.CheckResult{
 			URL:       url,
 			Available: false,

@@ -1,6 +1,6 @@
 # Journal d'utilisation de l'IA
 
-Notes sur l'usage de l'IA pour l'examen URLWatch (l'entièreté du document a été reformulée par l'IA au format markdown).
+Notes sur l'usage de l'IA pour l'examen URLWatch (l'entièreté du document a été reformulée par l'IA au format markdown pour qu'il soit joliment écrit).
 
 ## Partie 0 — Mise en place
 
@@ -86,3 +86,24 @@ Le domaine doit rester indépendant de HTTP et du stockage. Les interfaces perme
 ### Pourquoi
 
 Le pool je l'ai calqué sur exercice-4c. L'IA m'a surtout débloqué sur le deadlock et le test de concurrence.
+
+## Partie 3 — API REST
+
+### Ce que j'ai demandé à l'IA
+
+- Comment structurer les middlewares slog + recovery avec net/http
+- Aide sur le mapping JSON en snake_case
+
+### Accepté
+
+- `responseRecorder` pour capturer le status dans les logs
+- Format d'erreur uniforme `{ "error": { "code", "message" } }`
+
+### Modifié / rejeté
+
+- J'ai choisi net/http (déjà fait dans l'exercice 5a) plutôt que Gin
+- Validation dans `api/validation.go` avec les bornes du sujet
+
+### Pourquoi
+
+Gin c'était bien pour le TP mais ici je voulais rester en stdlib.

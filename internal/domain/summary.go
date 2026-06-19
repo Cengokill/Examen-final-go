@@ -20,6 +20,7 @@ func ComputeSummary(results []CheckResult) BatchSummary {
 		dureeTotale += r.LatencyMs
 	}
 
+	// fmt.Println("ComputeSummary : ", len(results), "total,", compteurs["available"], "up")
 	return BatchSummary{
 		Total:           len(results),
 		Available:       compteurs["available"],
@@ -34,6 +35,7 @@ func NewBatch(id string, results []CheckResult) Batch {
 	copie := make([]CheckResult, len(results))
 	copy(copie, results)
 
+	// fmt.Println("NewBatch : ", id, " : ", len(copie), "résultats")
 	return Batch{
 		ID:        id,
 		CreatedAt: time.Now().UTC(),

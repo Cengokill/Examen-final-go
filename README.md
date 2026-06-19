@@ -9,27 +9,27 @@ Microservice Go de verification d'URLs en masse (projet d'examen).
 ## Commandes
 
 ```bash
-# compiler tout le module
 go build ./...
-
-# analyse statique
 go vet ./...
-
-# tests
 go test ./...
-
-# lancer le binaire (partie 0 : message de demarrage uniquement)
 go run ./cmd/urlwatch
 ```
 
-## Exemple curl
+Variables d'environnement optionnelles :
+- `LOG_LEVEL` : `DEBUG`, `INFO` (défaut), `WARN`, `ERROR`
+- `PORT` : port d'écoute (défaut `8080`)
 
-Les endpoints REST seront documentes ici a partir de la partie API.
+## Exemples curl
 
 ```bash
-# a venir : creation d'un lot
-# curl -X POST http://localhost:8080/batches ...
+# sonde pour voir si ça fonctionne
+curl http://localhost:8080/healthz
 
-# a venir : lecture d'un lot
-# curl http://localhost:8080/batches/{id}
+# créer et exécuter un lot
+curl -X POST http://localhost:8080/v1/checks \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://go.dev","https://exemple.invalid"],"options":{"concurrency":4,"timeout_ms":2000}}'
+
+# relire un lot
+curl http://localhost:8080/v1/checks/b_4f3c1a
 ```

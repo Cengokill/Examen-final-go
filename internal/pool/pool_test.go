@@ -29,6 +29,8 @@ func TestRunCollecteTousLesResultats(t *testing.T) {
 	if len(results) != len(urls) {
 		t.Fatalf("%d résultats attendus, obtenu %d", len(urls), len(results))
 	}
+	// 3 attendus
+	// fmt.Println("TestRunCollecte : ", len(results), "résultats")
 }
 
 func TestRunConcurrencyBornee(t *testing.T) {
@@ -75,6 +77,7 @@ func TestRunBatchTimeout(t *testing.T) {
 	if len(results) >= len(urls) {
 		t.Fatalf("timeout global attendu, tous les résultats collectés (%d)", len(results))
 	}
+	// fmt.Println("batch timeout : ", len(results), "résultats partiels")
 }
 
 func TestRunURLTimeout(t *testing.T) {
@@ -128,4 +131,5 @@ func TestRunAnnulationContexte(t *testing.T) {
 	if len(results) >= len(urls) {
 		t.Fatalf("annulation attendue, %d/%d résultats", len(results), len(urls))
 	}
+	// fmt.Println("annulation ctx : ", len(results), "résultats partiels sur", len(urls))
 }

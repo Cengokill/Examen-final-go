@@ -86,3 +86,32 @@ L'entièreté de ce fichier markdown a été reformulée et indentée correcteme
 
 - `checker.HTTPChecker` : vrai GET avec `http.NewRequestWithContext`
 - `checker.MockChecker` : delai simule + suivi du pic de concurrence pour les tests
+
+## Decisions (partie 3 — API REST)
+
+### Choix net/http (pas Gin)
+
+- Déjà vu en TP exercice-5a : `ServeMux`, handlers, extraction d'id dans le path
+- Pas de dépendance externe pour un microservice simple
+- Middlewares maison (logging, recovery) proches du pattern Gin vu en 5b
+
+### Endpoints
+
+- `POST /v1/checks` : valide, exécute le pool, persiste, renvoie `201`
+- `GET /v1/checks/{id}` : lit le store ou `404 batch_not_found`
+- `GET /healthz` : sonde simple, exclue du middleware slog
+
+### JSON
+
+- DTOs API separes du domaine (`batch_id`, `ok`, `up`/`down` en snake_case)
+- Erreurs uniformes `{ "error": { "code", "message" } }`
+
+### Logging
+
+- `slog` + handler JSON sur stdout
+- Niveau via `LOG_LEVEL`
+- Middleware : `method`, `path`, `status`, `duration_ms`, `batch_id` si connu
+
+### Bonus recovery
+
+- `recoveryMiddleware` : panic -> log + `500 internal`

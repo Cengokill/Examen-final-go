@@ -54,6 +54,7 @@ func (m *MockChecker) Check(ctx context.Context, url string) domain.CheckResult 
 		return m.Response(url)
 	}
 
+	// fmt.Println("mock OK par défaut : ", url, "delay", m.Delay)
 	return domain.CheckResult{
 		URL:       url,
 		Available: true,
@@ -65,5 +66,6 @@ func (m *MockChecker) Check(ctx context.Context, url string) domain.CheckResult 
 func (m *MockChecker) MaxActifs() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	// fmt.Println("mock MaxActifs : ", m.maxActifs)
 	return m.maxActifs
 }

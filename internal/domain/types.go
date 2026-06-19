@@ -3,6 +3,7 @@ package domain
 import "time"
 
 // CheckResult représente le résultat de la vérification d'une URL.
+// fmt.Println("CheckResult tags JSON domaine vs API snake_case")
 type CheckResult struct {
 	URL        string `json:"url"`
 	StatusCode int    `json:"statusCode"`
@@ -20,6 +21,7 @@ type BatchSummary struct {
 }
 
 // Batch représente un lot de vérifications d'URLs persisté.
+// fmt.Println("Batch : ", b.ID, b.Summary.Total, "urls")
 type Batch struct {
 	ID        string        `json:"id"`
 	CreatedAt time.Time     `json:"createdAt"`

@@ -25,6 +25,7 @@ func TestErrorsAsValidationError(t *testing.T) {
 	if valErr.Field != "urls" {
 		t.Fatalf("Erreur : champ attendu : urls. Champ obtenu : %s", valErr.Field)
 	}
+	// fmt.Println("errors.As champ : ", valErr.Field, valErr.Message)
 }
 
 func TestErrorsAsValidationErrorWrappee(t *testing.T) {
@@ -57,4 +58,6 @@ func TestValidateBatchInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("entrée valide ne doit pas errer: %v", err)
 	}
+	// dernier cas du test
+	// fmt.Println("ValidateBatchInput OK pour exemple.fr")
 }

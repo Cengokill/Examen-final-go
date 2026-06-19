@@ -16,11 +16,13 @@ type ValidationError struct {
 
 // Error implémente l'interface error.
 func (e *ValidationError) Error() string {
+	// fmt.Println("ValidationError : ", e.Field, " : ", e.Message)
 	return fmt.Sprintf("validation %s: %s", e.Field, e.Message)
 }
 
 // NewValidationError crée une erreur de validation sur un champ précis.
 func NewValidationError(field, message string) error {
+	// fmt.Println("NewValidationError : ", field)
 	return &ValidationError{
 		Field:   field,
 		Message: message,

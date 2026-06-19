@@ -11,6 +11,7 @@ func TestComputeSummary(t *testing.T) {
 
 	summary := ComputeSummary(results)
 
+	// fmt.Println("summary test : ", summary.Total, summary.Available, summary.Failed)
 	if summary.Total != 3 {
 		t.Fatalf("Total attendu 3, obtenu %d", summary.Total)
 	}
@@ -40,6 +41,7 @@ func TestNewBatch(t *testing.T) {
 
 	batch := NewBatch("batch-1", results)
 
+	// fmt.Println("NewBatch test : ", batch.ID, batch.Summary.Total)
 	if batch.ID != "batch-1" {
 		t.Fatalf("ID attendu batch-1, obtenu : %s", batch.ID)
 	}

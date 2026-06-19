@@ -47,6 +47,7 @@ func (r *Runner) Run(ctx context.Context, urls []string, opts Options) []domain.
 	go distribuerURLs(batchCtx, urls, jobs)
 
 	// démarrage des workers (nombre fixe = concurrency, jamais une goroutine par URL)
+	// fmt.Println("pool : lancement de", opts.Concurrency, "workers pour", len(urls), "urls")
 	for w := 1; w <= opts.Concurrency; w++ {
 		wg.Add(1)
 		go worker(batchCtx, r.checker, opts.URLTimeout, jobs, results, &wg)
@@ -63,6 +64,7 @@ func (r *Runner) Run(ctx context.Context, urls []string, opts Options) []domain.
 		collected = append(collected, result)
 	}
 
+	// fmt.Println("pool terminé :", len(collected), "résultats sur", len(urls), "urls")
 	return collected
 }
 
@@ -94,6 +96,7 @@ func worker(
 	for url := range jobs {
 		select {
 		case <-ctx.Done():
+			// fmt.Println("worker arrêté :", ctx.Err())
 			return
 		default:
 		}
